@@ -1,0 +1,3 @@
+*** test results for cancer brca nt ['genes', 'ppi'] is 0.2235455562461782***
+*** test results for cancer brca nt ['ppi'] is 0.26641680396141343***
+*** test results for cancer brca nt ['genes'] is 0.0825377340189016***
