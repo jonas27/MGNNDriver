@@ -2,8 +2,9 @@ import argparse
 import logging
 import os
 
-import graphdriver
 import matplotlib
+
+import graphdriver
 from graphdriver.commons import config, data, results, setup
 from graphdriver.main import trainer, transformers
 from graphdriver.utils import paths
@@ -66,6 +67,7 @@ def train():
                 else:
                     conf.outer_fold = outer_fold
                 tr = trainer.Trainer(conf, cm_data=cm_data, hpo=False, test=test)
+                tr.num_outer_fold = outer_fold
                 logger.debug("Training with config: %s", str(conf))
                 r = tr.train()
                 res.extend(r)

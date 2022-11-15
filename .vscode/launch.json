@@ -1,0 +1,74 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "-v",
+                "--cancer-type=luad",
+                "-k=7"
+            ],
+            "cwd": "${fileDirname}",
+        },
+        {
+            "name": "ours-brca",
+            "type": "python",
+            "request": "launch",
+            "program": "cmd/ours.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-t",
+                "--cancer=brca",
+                "-s",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "hpo-test",
+            "type": "python",
+            "request": "launch",
+            "program": "cmd/hpo.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-t",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "deepdriver-test",
+            "type": "python",
+            "request": "launch",
+            "program": "cmd/deepdriver.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-t",
+                "-b",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "Train",
+            "type": "python",
+            "request": "launch",
+            "program": "graphdriver/__main__.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--cancer=brca",
+                "--epochs=10",
+                "--gcnk=0",
+                "--masks=5",
+                "--type=train",
+                "-d",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
+    ]
+}
+// --cancer brca --epochs 100 --imb 1 --masks 5 --type train -d --gcnk 0

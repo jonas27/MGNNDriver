@@ -38,8 +38,8 @@ class NetGCN(torch.nn.Module):
                 self.gene_layers.insert(0, conv_layer(conf.num_genes_nodes, conf.num_genes_nodes))
                 lin_mid_feat = int((math.log(conf.num_genes_nodes, 2) + 2) ** 2)
                 self.gene_layers.insert(0, torch.nn.Linear(conf.features, lin_mid_feat))
-                self.gene_layers.insert(0, torch.nn.Linear(lin_mid_feat, conf.num_genes_nodes))
-                self.gene_layers.insert(0, torch.nn.Linear(conf.features, conf.num_genes_nodes))
+                self.gene_layers.insert(1, torch.nn.Linear(lin_mid_feat, lin_mid_feat))
+                self.gene_layers.insert(2, torch.nn.Linear(lin_mid_feat, conf.num_genes_nodes))
             else:
                 self.gene_layers.insert(0, conv_layer(conf.features, conf.num_genes_nodes))
             lin_nodes_in += conf.num_genes_nodes
@@ -65,8 +65,8 @@ class NetGCN(torch.nn.Module):
                 self.ppi_layers.insert(0, conv_layer(conf.num_ppi_nodes, conf.num_ppi_nodes))
                 lin_mid_feat = int((math.log(conf.num_ppi_nodes, 2) + 2) ** 2)
                 self.ppi_layers.insert(0, torch.nn.Linear(conf.features, lin_mid_feat))
-                self.ppi_layers.insert(0, torch.nn.Linear(lin_mid_feat, conf.num_ppi_nodes))
-                self.ppi_layers.insert(0, torch.nn.Linear(conf.features, conf.num_ppi_nodes))
+                self.ppi_layers.insert(1, torch.nn.Linear(lin_mid_feat, lin_mid_feat))
+                self.ppi_layers.insert(2, torch.nn.Linear(lin_mid_feat, conf.num_ppi_nodes))
             else:
                 self.ppi_layers.insert(0, conv_layer(conf.features, conf.num_ppi_nodes))
             lin_nodes_in += conf.num_ppi_nodes

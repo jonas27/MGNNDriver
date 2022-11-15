@@ -1,25 +1,28 @@
 """The dataset used in graphdriver"""
-import os
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 import pandas as pd
 import torch
-from graphdriver import log
-from graphdriver.commons import mask
-from graphdriver.load import (gene_network, gtex, labels, ppi, tcga_genes,
-                              tcga_muts, tcga_muts_rel)
-from graphdriver.utils import cons, paths
 from torch_geometric.data import Data, InMemoryDataset
 
+from graphdriver import log
+from graphdriver.commons import mask
+from graphdriver.utils import paths
 
+
+@dataclass
+class Labels_Data:
+    drivers_cancer: torch.Tensor
+    drivers_others: torch.Tensor
+    candidates: torch.Tensor
+    passengers: torch.Tensor
+
+
+# @dataclass
 class CommonData(Data):
     gene_edge_attr: torch.Tensor
     gene_edge_index: torch.Tensor
-    normal_edge_attr: torch.Tensor
-    normal_edge_index: torch.Tensor
-    labels: labels.Labels_Data
-    mask: mask.Mask
+    labels: Labels_Data
     ppi_edge_index: torch.Tensor
     ppi_genes: torch.Tensor
     symbol_index_dict: dict
@@ -27,52 +30,50 @@ class CommonData(Data):
     y: torch.Tensor
 
 
+def load_data(cancer) -> CommonData:
+    path = paths.data_csv(cancer)
+    gene_edge_attr = torch.Tensor(pd.read_csv(f"{path}gene_edge_attr.csv", index_col=0).to_numpy()).type(torch.float)
+    gene_edge_index = torch.Tensor(pd.read_csv(f"{path}gene_edge_index.csv", index_col=0).to_numpy()).type(torch.long)
+    ppi_edge_index = torch.Tensor(pd.read_csv(f"{path}ppi_edge_index.csv", index_col=0).to_numpy()).type(torch.long)
+    ppi_genes = torch.Tensor(pd.read_csv(f"{path}ppi_genes.csv", index_col=0).to_numpy()).type(torch.float)
+
+    drivers_cancer = torch.Tensor(pd.read_csv(f"{path}labels_drivers_cancer.csv", index_col=0)["0"].to_numpy()).type(torch.long)
+    drivers_others = torch.Tensor(pd.read_csv(f"{path}labels_drivers_others.csv", index_col=0)["0"].to_numpy()).type(torch.long)
+    candidates = torch.Tensor(pd.read_csv(f"{path}labels_candidates.csv", index_col=0)["0"].to_numpy()).type(torch.long)
+    passengers = torch.Tensor(pd.read_csv(f"{path}labels_passengers.csv", index_col=0)["0"].to_numpy()).type(torch.long)
+    labels = Labels_Data(drivers_cancer, drivers_others, candidates, passengers)
+
+    symbol_index_dict = pd.read_csv(f"{path}symbol_index_dict.csv", index_col=0)["0"].to_dict()
+    x = torch.Tensor(pd.read_csv(f"{path}x.csv", index_col=0).to_numpy()).type(torch.float)
+    y = torch.Tensor(pd.read_csv(f"{path}y.csv", index_col=0).to_numpy()).type(torch.float).squeeze()
+    cm = CommonData(
+        gene_edge_attr=gene_edge_attr,
+        gene_edge_index=gene_edge_index,
+        labels=labels,
+        ppi_edge_index=ppi_edge_index,
+        ppi_genes=ppi_genes,
+        symbol_index_dict=symbol_index_dict,
+        x=x,
+        y=y,
+    )
+    return cm
+
+
 class Dataset(InMemoryDataset):
-    def __init__(self, cancer: str, transform=None, create_data: bool = True):
+    def __init__(self, cancer: str, transform=None):
         self.cancer = cancer
-        self.create_data = create_data
         root = paths.datasets()
         super().__init__(root, transform=transform)
+        self.process()
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
     def processed_file_names(self):
-        path = self.root + "/" + self.cancer + ".pt"
-        log.debug(path)
+        path = paths.datasets_c(self.cancer)
         return [path]
 
     def process(self):
-        """process builds the dataset with two edge matrices.
-
-        For more detail on the implementation see https://pytorch-geometric.readthedocs.io/en/latest/notes/batching.html#pairs-of-graphs
-
-        """
-        if not self.create_data:
-            raise PermissionError("Dont Process Data.")
-        cancer = self.cancer
-        log.debug("Processing cancer: %s", cancer)
-        df_genes = tcga_genes.genes(cancer)
-        df_mutations = tcga_muts.muts(cancer)
-        network_dict = {cons.TUMOR: df_genes, cons.TCGA_MUTATIONS: df_mutations}
-        # remove unique genes and sort
-        network_dict, symbol_index_dict = keep_common_genes(network_dict)
-        x = torch.tensor(network_dict[cons.TCGA_MUTATIONS].to_numpy(), dtype=torch.float)
-        # x = (x - x.mean()) / x.std()  # normalize data
-        lbls = labels.lbls(cancer, symbol_index_dict)
-        gene_edge_index, gene_edge_attr = gene_network.gene_network(network_dict[cons.TUMOR])
-        y = build_y(len(symbol_index_dict), lbls)
-        ppi_edge_index, ppi_genes = ppi.edges_ppi(symbol_index_dict)
-        # skf_splits =
-        data = CommonData(
-            gene_edge_attr=gene_edge_attr,
-            gene_edge_index=gene_edge_index,
-            labels=lbls,
-            ppi_edge_index=ppi_edge_index,
-            ppi_genes=ppi_genes,
-            symbol_index_dict=symbol_index_dict,
-            x=x,
-            y=y,
-        )
+        data = load_data(self.cancer)
         self.save(data)
 
     def get_data(self) -> CommonData:
@@ -84,49 +85,3 @@ class Dataset(InMemoryDataset):
         data, slices = self.collate([data])
         torch.save((data, slices), self.processed_paths[0])
         log.debug("saving dataset")
-
-
-def keep_common_genes(networks: Dict[str, pd.DataFrame]) -> Tuple[Dict, Dict]:
-    """keep_common_genes removes all genes which are not part of the network dfs.
-    Genes are used from index.
-
-    We only want to consider genes which are present in all datasets used in the network construction.
-    It includes the nodes, edges and features. Here all genes need to be present in all datasets.
-    All genes inside the labels must also be inside network genes.
-
-    Args:
-        dfs_network: The genes used for the network construction
-
-    Returns:
-        dfs_network with removed unique genes and sorted.
-        dfs_genes with removed unique genes and sorted.
-    """
-    gene_list = []
-    # build a common gene list for the network
-    for df in networks.values():
-        curr_symbols = df.index.tolist()
-        if not gene_list:
-            gene_list = curr_symbols
-        gene_list = list(set(gene_list).intersection(curr_symbols))
-    gene_list.sort()
-
-    # remove all network genes not in common gene list
-    for key in networks:
-        df = networks[key]
-        log.debug("Network %s: before is %d", key, df.shape[0])
-        df = df[df.index.isin(gene_list)].sort_index()
-        log.debug("Network %s: after is %d", key, df.shape[0])
-        networks[key] = df
-
-    # build genes_dict
-    genes_dict = {k: v for v, k in enumerate(gene_list)}
-    return networks, genes_dict
-
-
-def build_y(size: int, lbls: labels.Labels_Data) -> torch.Tensor:
-    """bild_y returns a (1, len(genes_dict)) tensor."""
-    y = torch.zeros(size)
-    y[lbls.drivers_cancer] = 1
-    y[lbls.drivers_others] = -1
-    y[lbls.candidates] = -1
-    return y

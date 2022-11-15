@@ -4,110 +4,34 @@ from pathlib import Path
 from typing import Any, List
 
 import pandas as pd
+import torch
+
 from graphdriver import log
-from numpy import str0
 
 REPO_DIR = str(Path(__file__).parents[2].absolute()) + "/"
+DATA = REPO_DIR + "/data/"
 RESULTS = REPO_DIR + "/results/"
-BRCA = "brca"
-COAD = "coad"
-LUAD = "luad"
 
 
-def data_all_path():
+def data_csv(cancer):
     """
-    returns the path for data important for all cancer types.
+    returns the path to the datasets in CSV form
     """
-    # return _ensure_path(REPO_DIR + "/data/data_all/", False)
-    return REPO_DIR + "/data/data_all/"
+    return _ensure_path(f"{DATA}csv/{cancer}/", False)
 
 
 def datasets():
     """
     returns the path to the datasets
     """
-    return _ensure_path(REPO_DIR + "/data/datasets/", False)
+    return _ensure_path(f"{DATA}datasets/", False)
 
 
-def data_negatives(file, isfile=True):
+def datasets_c(cancer):
     """
-    returns the path to the data used for the negatives
+    returns the path to the datasets in CSV form
     """
-    return _ensure_path(REPO_DIR + "/data/negatives/" + file, isfile)
-
-
-def data_raw_path(cancer):
-    """
-    returns the path to the raw data from gdc.
-    """
-    return _ensure_path(REPO_DIR + "/data/raw/" + cancer + "/", False)
-
-
-def data_raw_path_labels(file: str):
-    """
-    returns the path to the raw gene data from gdc.
-    """
-    return _ensure_path(data_raw_path("labels") + file, True)
-
-
-def data_raw_path_genes(cancer: str):
-    """
-    returns the path to the raw gene data from gdc.
-    """
-    return _ensure_path(data_raw_path(cancer) + "genes/", False)
-
-
-def data_raw_path_pancancer(file="", isfile=False):
-    """
-    returns the path to the raw pancancer data from pancancer project.
-    """
-    return _ensure_path(data_raw_path("pancancer") + file, isfile)
-
-
-def data_raw_path_ppi(file="", isfile=False):
-    """
-    returns the path to the raw ppi data.
-    """
-    return _ensure_path(data_raw_path("ppi") + file, isfile)
-
-
-def data_raw_mutations(cancer: str):
-    """
-    returns the path to the FILE of the raw mutation data from gdc.
-    """
-    return _ensure_path(
-        data_raw_path(cancer) + "/mutations/mutect_somatic.maf.gz",
-        True,
-    )
-
-
-def gtex():
-    """
-    returns the path to the directory gtex data.
-    """
-    return _ensure_path(REPO_DIR + "/data/gtex/", file=False)
-
-
-def gtex_pcc(cancer: str):
-    """
-    returns the path to the FILE of the calculated gtex pcc for param cancer.
-    """
-    return _ensure_path("{}/data/gtex_pcc/{}".format(REPO_DIR, cancer), file=True)
-
-
-def gcn_normal(cancer: str):
-    """
-    returns the path to the FILE of the raw mutation data from gdc.
-    """
-    return _ensure_path(REPO_DIR + "/data/gcn_normal/{}.pickle".format(cancer), file=True)
-
-
-def tmp_path(cancer, name):
-    """
-    tmpdata is a datasink without descriminating between cancer type or module/dir.
-    returns a file with cancerType_name in tmpdata.
-    """
-    return _ensure_path(REPO_DIR + "/data/tmp/" + cancer + "_" + name, True)
+    return _ensure_path(f"{DATA}datasets/{cancer}.pt", True)
 
 
 def results_graphdriver():
@@ -115,20 +39,6 @@ def results_graphdriver():
     returns the path to the optimization results.
     """
     return _ensure_path(RESULTS + "graphdriver/", False)
-
-
-def results_deepdriver():
-    """
-    returns the path to the train results.
-    """
-    return _ensure_path(RESULTS + "deepdriver/", False)
-
-
-def results_emogi():
-    """
-    returns the path to the train results.
-    """
-    return _ensure_path(RESULTS + "emogi/", False)
 
 
 def results_best_ours(cancer: str, network_type: List) -> str:
@@ -190,3 +100,16 @@ def pickle_load(path: str) -> Any:
     log.debug("load pickle from: %s", path)
     with open(path, "rb") as handle:
         return pickle.load(handle)
+
+
+def state_dict_path(cancer, nt, num_outer_fold, num_inner_fold):
+    path = f"{REPO_DIR}/models/{cancer}/{'-'.join(nt)}/outer-{num_outer_fold}/weights-inner-{num_inner_fold}.pth"
+    return _ensure_path(path, True)
+
+
+def state_dict_save(model, path):
+    torch.save(model.state_dict(), path)
+
+
+def state_dict_load(path):
+    return torch.load(path)

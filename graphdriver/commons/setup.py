@@ -23,7 +23,7 @@ def cancer_types() -> List[str]:
 
 
 def network_types() -> List[List[str]]:
-    return [["ppi"], ["genes"], ["genes", "ppi"], ["genes", "normal"]]
+    return [["ppi"], ["genes"], ["genes", "ppi"]]  # , ["genes", "normal"]
 
 
 def directed() -> List[bool]:

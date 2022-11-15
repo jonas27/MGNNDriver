@@ -49,7 +49,7 @@ class ConfSpace(CS.ConfigurationSpace):
         outerfold = CS.Constant(OUTER_FOLD, outer_fold)
         nt = CS.Constant(NETWORK_TYPE, "_".join(network_type))
         total_inner = CS.Constant(TOTAL_INNER, 4)
-        use_mlp = CS.Constant(USE_MLP, False)
+        use_mlp = CS.CategoricalHyperparameter(USE_MLP, [True])
         self.add_hyperparameters([c, nt, outerfold, total_inner, use_mlp])
 
         net_specific = []
